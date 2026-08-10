@@ -1,0 +1,205 @@
+// Schema de TurnosFutbol.
+// Convención: modelos y campos en español; se mapean a tablas/columnas
+// snake_case en español (@@map / @map). Fechas absolutas en timestamptz (UTC);
+// los horarios de atención se guardan como minutos desde medianoche (hora local
+// del complejo) para evitar ambigüedades de zona horaria.
+// Docs de diseño: docs/ARQUITECTURA.md
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────── Enums ───────────────────────────
+
+enum RolUsuario {
+  ADMIN_GENERAL
+  ADMIN_COMPLEJO
+}
+
+enum TipoCancha {
+  F5
+  F7
+  F11
+}
+
+enum EstadoReserva {
+  CONFIRMADA
+  CANCELADA
+  BLOQUEADA
+}
+
+enum TipoReserva {
+  RESERVA
+  BLOQUEO
+}
+
+enum OrigenReserva {
+  WEB
+  MANUAL
+}
+
+// ─────────────────────────── Usuarios ───────────────────────────
+
+model Usuario {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  nombre       String
+  rol          RolUsuario
+  creadoEn     DateTime   @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  membresias      ComplejoUsuario[]
+  reservasCreadas Reserva[]         @relation("ReservasCreadas")
+
+  @@map("usuarios")
+}
+
+// ─────────────────────────── Complejos (tenant) ───────────────────────────
+
+model Complejo {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique
+  nombre      String
+  descripcion String?
+  direccion   String?
+  ciudad      String?
+  latitud     Decimal? @db.Decimal(9, 6)
+  longitud    Decimal? @db.Decimal(9, 6)
+  telefono    String?
+  whatsapp    String?
+  email       String?
+  activo      Boolean  @default(true)
+  creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  canchas  Cancha[]
+  miembros ComplejoUsuario[]
+  reservas Reserva[]
+
+  @@index([ciudad])
+  @@index([activo])
+  @@map("complejos")
+}
+
+// Relación usuario ↔ complejo (un usuario puede administrar uno o varios).
+model ComplejoUsuario {
+  id         String     @id @default(uuid()) @db.Uuid
+  usuarioId  String     @map("usuario_id") @db.Uuid
+  complejoId String     @map("complejo_id") @db.Uuid
+  rol        RolUsuario @default(ADMIN_COMPLEJO)
+
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  complejo Complejo @relation(fields: [complejoId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, complejoId])
+  @@index([complejoId])
+  @@map("complejo_usuarios")
+}
+
+// ─────────────────────────── Canchas ───────────────────────────
+
+model Cancha {
+  id          String     @id @default(uuid()) @db.Uuid
+  complejoId  String     @map("complejo_id") @db.Uuid
+  nombre      String
+  tipo        TipoCancha
+  superficie  String?
+  techada     Boolean    @default(false)
+  descripcion String?
+  precioBase  Decimal?   @map("precio_base") @db.Decimal(10, 2)
+  activa      Boolean    @default(true)
+  creadoEn    DateTime   @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  complejo     Complejo          @relation(fields: [complejoId], references: [id], onDelete: Cascade)
+  fotos        CanchaFoto[]
+  horarios     HorarioAtencion[]
+  reglasPrecio ReglaPrecio[]
+  reservas     Reserva[]
+
+  @@index([complejoId, activa])
+  @@map("canchas")
+}
+
+model CanchaFoto {
+  id       String @id @default(uuid()) @db.Uuid
+  canchaId String @map("cancha_id") @db.Uuid
+  url      String
+  posicion Int    @default(0) @db.SmallInt
+
+  cancha Cancha @relation(fields: [canchaId], references: [id], onDelete: Cascade)
+
+  @@index([canchaId])
+  @@map("cancha_fotos")
+}
+
+// Horario de atención semanal por cancha. Los slots se generan desde acá.
+// aperturaMin / cierreMin: minutos desde medianoche (hora local). Ej: 18:00 = 1080.
+model HorarioAtencion {
+  id           String @id @default(uuid()) @db.Uuid
+  canchaId     String @map("cancha_id") @db.Uuid
+  diaSemana    Int    @map("dia_semana") @db.SmallInt // 0=domingo … 6=sábado
+  aperturaMin  Int    @map("apertura_min") @db.SmallInt
+  cierreMin    Int    @map("cierre_min") @db.SmallInt
+  minutosTurno Int    @map("minutos_turno") @db.SmallInt
+
+  cancha Cancha @relation(fields: [canchaId], references: [id], onDelete: Cascade)
+
+  @@index([canchaId, diaSemana])
+  @@map("horarios_atencion")
+}
+
+// Regla de precio flexible. La más específica (mayor prioridad) gana; si ninguna
+// matchea se usa Cancha.precioBase. diaSemana/inicioMin/finMin null = comodín.
+model ReglaPrecio {
+  id        String  @id @default(uuid()) @db.Uuid
+  canchaId  String  @map("cancha_id") @db.Uuid
+  diaSemana Int?    @map("dia_semana") @db.SmallInt
+  inicioMin Int?    @map("inicio_min") @db.SmallInt
+  finMin    Int?    @map("fin_min") @db.SmallInt
+  precio    Decimal @db.Decimal(10, 2)
+  prioridad Int     @default(0)
+
+  cancha Cancha @relation(fields: [canchaId], references: [id], onDelete: Cascade)
+
+  @@index([canchaId])
+  @@map("reglas_precio")
+}
+
+// ─────────────────────────── Reservas (y bloqueos) ───────────────────────────
+// Tabla central. tipo=RESERVA (cliente) o tipo=BLOQUEO (mantenimiento/torneo).
+// El constraint anti-superposición (EXCLUDE con btree_gist) se agrega por SQL
+// en la migración: dos filas de la misma cancha no pueden solaparse en el tiempo
+// mientras estado <> 'CANCELADA'.
+model Reserva {
+  id                String        @id @default(uuid()) @db.Uuid
+  token             String        @unique @default(uuid()) @db.Uuid // para /reserva/[token]
+  complejoId        String        @map("complejo_id") @db.Uuid
+  canchaId          String        @map("cancha_id") @db.Uuid
+  iniciaEn          DateTime      @map("inicia_en") @db.Timestamptz(6)
+  terminaEn         DateTime      @map("termina_en") @db.Timestamptz(6)
+  estado            EstadoReserva @default(CONFIRMADA)
+  tipo              TipoReserva   @default(RESERVA)
+  precio            Decimal       @default(0) @db.Decimal(10, 2) // snapshot al crear
+  clienteNombre     String?       @map("cliente_nombre")
+  clienteApellido   String?       @map("cliente_apellido")
+  clienteTelefono   String?       @map("cliente_telefono")
+  clienteEmail      String?       @map("cliente_email")
+  origen            OrigenReserva @default(WEB)
+  creadaPorId       String?       @map("creada_por_id") @db.Uuid
+  motivoBloqueo     String?       @map("motivo_bloqueo")
+  creadaEn          DateTime      @default(now()) @map("creada_en") @db.Timestamptz(6)
+  canceladaEn       DateTime?     @map("cancelada_en") @db.Timestamptz(6)
+  motivoCancelacion String?       @map("motivo_cancelacion")
+
+  complejo  Complejo @relation(fields: [complejoId], references: [id], onDelete: Cascade)
+  cancha    Cancha   @relation(fields: [canchaId], references: [id], onDelete: Cascade)
+  creadaPor Usuario? @relation("ReservasCreadas", fields: [creadaPorId], references: [id], onDelete: SetNull)
+
+  @@index([canchaId, iniciaEn])
+  @@index([complejoId])
+  @@map("reservas")
+}
