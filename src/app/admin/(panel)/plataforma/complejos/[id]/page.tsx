@@ -34,6 +34,12 @@ export default async function EditarComplejoPage({
         </Link>
         <h1 className="mt-2 text-2xl font-bold">{complejo.nombre}</h1>
         <p className="text-sm text-marca-marron/70">/{complejo.slug}</p>
+        <Link
+          href={`/admin/complejo/${complejo.id}/canchas`}
+          className="mt-3 inline-block rounded-md bg-marca-verde px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-marca-verde-oscuro"
+        >
+          Gestionar canchas
+        </Link>
       </div>
 
       <section className="flex flex-col gap-4">
