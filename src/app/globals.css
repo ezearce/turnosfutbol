@@ -12,11 +12,16 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Paleta de marca (panel admin): verde / marrón / blanco-crema. */
+@theme {
+  --color-marca-verde: #2f6b46;
+  --color-marca-verde-oscuro: #245537;
+  --color-marca-verde-claro: #e8f1ea;
+  --color-marca-marron: #6f4e37;
+  --color-marca-marron-oscuro: #543a29;
+  --color-marca-crema: #faf7f1;
+  --color-marca-borde: #e6ddd0;
+  --color-marca-texto: #2b241d;
 }
 
 body {

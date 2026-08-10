@@ -1,41 +1,45 @@
-import { auth, signOut } from "@/auth";
+import Link from "next/link";
+import { auth } from "@/auth";
 
 export default async function DashboardPage() {
   const session = await auth();
   const usuario = session!.user;
+  const esAdminGeneral = usuario.rol === "ADMIN_GENERAL";
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Panel</h1>
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/admin/login" });
-          }}
-        >
-          <button
-            type="submit"
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-neutral-100"
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
+      <div>
+        <h1 className="text-2xl font-bold">Hola, {usuario.name}</h1>
+        <p className="mt-1 text-sm text-marca-marron">
+          Rol: <code>{usuario.rol}</code>
+          {!esAdminGeneral ? (
+            <>
+              {" "}
+              · Complejos: <code>{usuario.complejoIds.length}</code>
+            </>
+          ) : null}
+        </p>
+      </div>
+
+      {esAdminGeneral ? (
+        <div className="rounded-lg border border-marca-borde bg-white p-4">
+          <h2 className="text-sm font-semibold">Administración de la plataforma</h2>
+          <p className="mt-1 text-sm text-marca-marron">
+            Gestioná los complejos y sus administradores.
+          </p>
+          <Link
+            href="/admin/plataforma/complejos"
+            className="mt-3 inline-block rounded-md bg-marca-verde px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-marca-verde-oscuro"
           >
-            Cerrar sesión
-          </button>
-        </form>
-      </div>
-
-      <div className="rounded-lg border border-neutral-200 p-4 text-sm">
-        <p>
-          Sesión iniciada como <strong>{usuario.name}</strong> ({usuario.email})
+            Ver complejos
+          </Link>
+        </div>
+      ) : (
+        <p className="text-sm text-marca-marron">
+          La gestión de tu complejo (canchas, horarios, reservas) llega en las
+          próximas fases.
         </p>
-        <p className="mt-1 text-neutral-500">
-          Rol: <code>{usuario.rol}</code> · Complejos:{" "}
-          <code>{usuario.complejoIds.length}</code>
-        </p>
-      </div>
-
-      <p className="text-sm text-neutral-400">
-        Fase 1 (datos + auth) — dashboard completo en la Fase 6.
-      </p>
+      )}
     </main>
   );
 }
