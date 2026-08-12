@@ -1,31 +1,98 @@
 @import "tailwindcss";
 
+/* Modo oscuro por clase en <html> (toggle de usuario), no por prefers-color. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ───────────────────────── Tokens de tema ─────────────────────────
+   Un único set de variables semánticas que conmutan entre el tema claro
+   ("Moderno claro": blanco/pizarra + esmeralda) y el oscuro ("Deportivo
+   oscuro": pizarra casi negra + verde vibrante). Se exponen como utilidades
+   Tailwind (bg-fondo, text-texto, border-borde, bg-primario, …) vía @theme
+   inline. Los alias marca-* mantienen compatibilidad con el panel admin. */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --tf-fondo: #f6f8fa;
+  --tf-superficie: #ffffff;
+  --tf-superficie-2: #f1f5f9;
+  --tf-borde: #e2e8f0;
+  --tf-texto: #0f172a;
+  --tf-suave: #64748b;
+  --tf-primario: #047857;
+  --tf-primario-fuerte: #065f46;
+  --tf-primario-suave: #ecfdf5;
+  --tf-primario-borde: #a7f3d0;
+  --tf-primario-contraste: #ffffff;
+  --tf-peligro: #dc2626;
+  --tf-peligro-suave: #fef2f2;
+  --tf-sombra: 0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.06);
+}
+
+.dark {
+  --tf-fondo: #0a0f1a;
+  --tf-superficie: #111827;
+  --tf-superficie-2: #1e293b;
+  --tf-borde: #293548;
+  --tf-texto: #e5e7eb;
+  --tf-suave: #94a3b8;
+  --tf-primario: #10b981;
+  --tf-primario-fuerte: #34d399;
+  --tf-primario-suave: #06251f;
+  --tf-primario-borde: #135e4a;
+  --tf-primario-contraste: #04120e;
+  --tf-peligro: #f87171;
+  --tf-peligro-suave: #2a1416;
+  --tf-sombra: 0 1px 3px 0 rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.4);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-/* Paleta de marca (panel admin): verde / marrón / blanco-crema. */
-@theme {
-  --color-marca-verde: #2f6b46;
-  --color-marca-verde-oscuro: #245537;
-  --color-marca-verde-claro: #e8f1ea;
-  --color-marca-marron: #6f4e37;
-  --color-marca-marron-oscuro: #543a29;
-  --color-marca-crema: #faf7f1;
-  --color-marca-borde: #e6ddd0;
-  --color-marca-texto: #2b241d;
+  /* Semánticos */
+  --color-fondo: var(--tf-fondo);
+  --color-superficie: var(--tf-superficie);
+  --color-superficie-2: var(--tf-superficie-2);
+  --color-borde: var(--tf-borde);
+  --color-texto: var(--tf-texto);
+  --color-suave: var(--tf-suave);
+  --color-primario: var(--tf-primario);
+  --color-primario-fuerte: var(--tf-primario-fuerte);
+  --color-primario-suave: var(--tf-primario-suave);
+  --color-primario-borde: var(--tf-primario-borde);
+  --color-primario-contraste: var(--tf-primario-contraste);
+  --color-peligro: var(--tf-peligro);
+  --color-peligro-suave: var(--tf-peligro-suave);
+
+  /* Alias de marca (compatibilidad con el panel admin existente) */
+  --color-marca-verde: var(--tf-primario);
+  --color-marca-verde-oscuro: var(--tf-primario-fuerte);
+  --color-marca-verde-claro: var(--tf-primario-suave);
+  --color-marca-marron: var(--tf-suave);
+  --color-marca-marron-oscuro: var(--tf-suave);
+  --color-marca-crema: var(--tf-fondo);
+  --color-marca-borde: var(--tf-borde);
+  --color-marca-texto: var(--tf-texto);
+  --color-marca-superficie: var(--tf-superficie);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--tf-fondo);
+  color: var(--tf-texto);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Transición suave al cambiar de tema. */
+:root,
+.dark {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+
+/* Estilos de impresión para el comprobante de reserva. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }

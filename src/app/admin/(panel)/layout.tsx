@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // Protege todo el panel: sin sesión válida, redirige al login.
 // El login vive fuera de este route group, así que no queda protegido.
@@ -18,7 +19,7 @@ export default async function PanelLayout({
 
   return (
     <div className="flex min-h-screen flex-col bg-marca-crema text-marca-texto">
-      <header className="border-b border-marca-borde bg-white">
+      <header className="border-b border-marca-borde bg-marca-superficie">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-3">
           <nav className="flex items-center gap-4 text-sm font-medium">
             <Link
@@ -43,6 +44,7 @@ export default async function PanelLayout({
             ) : null}
           </nav>
           <div className="flex items-center gap-3 text-sm">
+            <ThemeToggle />
             <span className="hidden text-marca-marron sm:inline">
               {session.user.name}
             </span>

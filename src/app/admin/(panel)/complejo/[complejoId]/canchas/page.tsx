@@ -48,11 +48,11 @@ export default async function CanchasPage({
       </div>
 
       {canchas.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-marca-borde bg-white p-8 text-center text-sm text-marca-marron">
+        <p className="rounded-lg border border-dashed border-marca-borde bg-marca-superficie p-8 text-center text-sm text-marca-marron">
           Todavía no hay canchas. Creá la primera.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-marca-borde bg-white">
+        <div className="overflow-hidden rounded-lg border border-marca-borde bg-marca-superficie">
           <table className="w-full text-sm">
             <thead className="bg-marca-crema text-left text-marca-marron">
               <tr>
@@ -83,7 +83,7 @@ export default async function CanchasPage({
                       className={
                         c.activa
                           ? "rounded-full bg-marca-verde-claro px-2 py-0.5 text-xs font-medium text-marca-verde-oscuro"
-                          : "rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-600"
+                          : "rounded-full bg-superficie-2 px-2 py-0.5 text-xs font-medium text-suave"
                       }
                     >
                       {c.activa ? "Activa" : "Inactiva"}

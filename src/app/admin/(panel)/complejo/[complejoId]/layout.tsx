@@ -24,7 +24,7 @@ export default async function ComplejoLayout({
 
   return (
     <>
-      <div className="border-b border-marca-borde bg-white/60">
+      <div className="border-b border-marca-borde bg-marca-superficie/60">
         <div className="mx-auto flex w-full max-w-4xl items-center gap-2 px-6 py-2 text-sm">
           {esAdminGeneral ? (
             <Link

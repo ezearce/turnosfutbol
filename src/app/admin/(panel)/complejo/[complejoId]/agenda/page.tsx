@@ -6,6 +6,7 @@ import { minutosAHHMM } from "@/lib/horas";
 import { formatearPrecio } from "@/lib/formato";
 import { ReservaManualForm, type TurnoLibre } from "./_componentes/reserva-manual-form";
 import { BloqueoForm } from "./_componentes/bloqueo-form";
+import { FormCancelar } from "./_componentes/form-cancelar";
 import { reservarManual, bloquear, cancelar } from "./acciones";
 
 const ESTADO_SLOT: Record<string, { texto: string; clase: string }> = {
@@ -13,8 +14,8 @@ const ESTADO_SLOT: Record<string, { texto: string; clase: string }> = {
     texto: "Libre",
     clase: "bg-marca-verde-claro text-marca-verde-oscuro",
   },
-  OCUPADO: { texto: "Ocupado", clase: "bg-neutral-200 text-neutral-600" },
-  PASADO: { texto: "Pasado", clase: "bg-neutral-100 text-neutral-400" },
+  OCUPADO: { texto: "Ocupado", clase: "bg-superficie-2 text-suave" },
+  PASADO: { texto: "Pasado", clase: "bg-superficie-2 text-suave opacity-60" },
 };
 
 export default async function AgendaPage({
@@ -86,7 +87,7 @@ export default async function AgendaPage({
       </div>
 
       {canchas.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-marca-borde bg-white p-8 text-center text-sm text-marca-marron">
+        <p className="rounded-lg border border-dashed border-marca-borde bg-marca-superficie p-8 text-center text-sm text-marca-marron">
           Primero cargá una cancha con horarios para poder tomar reservas.
         </p>
       ) : (
@@ -94,14 +95,14 @@ export default async function AgendaPage({
           {/* Selector de cancha + fecha (navegación GET) */}
           <form
             method="get"
-            className="flex flex-wrap items-end gap-3 rounded-lg border border-marca-borde bg-white p-4"
+            className="flex flex-wrap items-end gap-3 rounded-lg border border-marca-borde bg-marca-superficie p-4"
           >
             <label className="flex flex-col gap-1 text-sm font-medium">
               Cancha
               <select
                 name="canchaId"
                 defaultValue={canchaId}
-                className="rounded-md border border-marca-borde bg-white px-3 py-2 outline-none focus:border-marca-verde"
+                className="rounded-md border border-marca-borde bg-marca-superficie px-3 py-2 outline-none focus:border-marca-verde"
               >
                 {canchas.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -116,7 +117,7 @@ export default async function AgendaPage({
                 type="date"
                 name="fecha"
                 defaultValue={fecha}
-                className="rounded-md border border-marca-borde bg-white px-3 py-2 outline-none focus:border-marca-verde"
+                className="rounded-md border border-marca-borde bg-marca-superficie px-3 py-2 outline-none focus:border-marca-verde"
               />
             </label>
             <button
@@ -162,7 +163,7 @@ export default async function AgendaPage({
           {/* Reserva manual */}
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold">Reserva manual</h2>
-            <div className="rounded-lg border border-marca-borde bg-white p-4">
+            <div className="rounded-lg border border-marca-borde bg-marca-superficie p-4">
               <ReservaManualForm
                 accion={reservarManual}
                 complejoId={complejoId}
@@ -176,7 +177,7 @@ export default async function AgendaPage({
           {/* Bloqueo */}
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold">Bloquear horario</h2>
-            <div className="rounded-lg border border-marca-borde bg-white p-4">
+            <div className="rounded-lg border border-marca-borde bg-marca-superficie p-4">
               <BloqueoForm
                 accion={bloquear}
                 complejoId={complejoId}
@@ -192,7 +193,7 @@ export default async function AgendaPage({
             {reservas.length === 0 ? (
               <p className="text-sm text-marca-marron">Nada agendado para este día.</p>
             ) : (
-              <ul className="divide-y divide-marca-borde rounded-lg border border-marca-borde bg-white">
+              <ul className="divide-y divide-marca-borde rounded-lg border border-marca-borde bg-marca-superficie">
                 {reservas.map((r) => {
                   const esBloqueo = r.tipo === "BLOQUEO";
                   return (
@@ -225,18 +226,22 @@ export default async function AgendaPage({
                           {!esBloqueo ? ` · ${formatearPrecio(r.precio)}` : ""}
                         </div>
                       </div>
-                      <form action={cancelar}>
-                        <input type="hidden" name="complejoId" value={complejoId} />
-                        <input type="hidden" name="canchaId" value={canchaId} />
-                        <input type="hidden" name="fecha" value={fecha} />
-                        <input type="hidden" name="reservaId" value={r.id} />
-                        <button
-                          type="submit"
-                          className="text-marca-marron hover:text-red-600"
-                        >
-                          Cancelar
-                        </button>
-                      </form>
+                      <FormCancelar
+                        accion={cancelar}
+                        complejoId={complejoId}
+                        canchaId={canchaId}
+                        fecha={fecha}
+                        reservaId={r.id}
+                        descripcion={
+                          esBloqueo
+                            ? "este bloqueo"
+                            : `la reserva de ${
+                                [r.clienteNombre, r.clienteApellido]
+                                  .filter(Boolean)
+                                  .join(" ") || "este cliente"
+                              } (${horaLocalHHMM(r.iniciaEn)})`
+                        }
+                      />
                     </li>
                   );
                 })}

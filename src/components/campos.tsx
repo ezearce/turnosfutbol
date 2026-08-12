@@ -6,7 +6,7 @@ import type {
 } from "react";
 
 const claseControl =
-  "rounded-md border border-marca-borde bg-white px-3 py-2 font-normal outline-none transition-colors focus:border-marca-verde focus:ring-2 focus:ring-marca-verde/20";
+  "rounded-md border border-marca-borde bg-marca-superficie px-3 py-2 font-normal text-marca-texto outline-none transition-colors focus:border-marca-verde focus:ring-2 focus:ring-marca-verde/20";
 
 export function Campo({
   label,
@@ -66,7 +66,7 @@ export function CampoTextarea({
 export function MensajeError({ children }: { children?: string }) {
   if (!children) return null;
   return (
-    <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+    <p className="rounded-md bg-peligro-suave px-3 py-2 text-sm text-peligro">
       {children}
     </p>
   );

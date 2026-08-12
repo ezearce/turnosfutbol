@@ -24,7 +24,7 @@ export default async function LoginPage(props: PageProps<"/admin/login">) {
 
   return (
     <main className="flex min-h-screen flex-1 flex-col items-center justify-center bg-marca-crema px-6 py-12 text-marca-texto">
-      <div className="w-full max-w-sm rounded-2xl border border-marca-borde bg-white p-8 shadow-sm">
+      <div className="w-full max-w-sm rounded-2xl border border-marca-borde bg-marca-superficie p-8 shadow-sm">
         <div className="space-y-1 text-center">
           <p className="flex items-center justify-center gap-1.5 text-lg font-bold text-marca-verde">
             <span aria-hidden>⚽</span> TurnosFutbol
@@ -47,7 +47,7 @@ export default async function LoginPage(props: PageProps<"/admin/login">) {
               name="email"
               required
               autoComplete="email"
-              className="rounded-md border border-marca-borde bg-white px-3 py-2 font-normal outline-none transition-colors focus:border-marca-verde focus:ring-2 focus:ring-marca-verde/20"
+              className="rounded-md border border-marca-borde bg-marca-superficie px-3 py-2 font-normal outline-none transition-colors focus:border-marca-verde focus:ring-2 focus:ring-marca-verde/20"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -57,7 +57,7 @@ export default async function LoginPage(props: PageProps<"/admin/login">) {
               name="password"
               required
               autoComplete="current-password"
-              className="rounded-md border border-marca-borde bg-white px-3 py-2 font-normal outline-none transition-colors focus:border-marca-verde focus:ring-2 focus:ring-marca-verde/20"
+              className="rounded-md border border-marca-borde bg-marca-superficie px-3 py-2 font-normal outline-none transition-colors focus:border-marca-verde focus:ring-2 focus:ring-marca-verde/20"
             />
           </label>
           <button

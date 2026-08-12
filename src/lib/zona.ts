@@ -104,6 +104,18 @@ export function inicioSemanaISO(fechaISO: string): string {
   return sumarDiasISO(fechaISO, -haciaLunes);
 }
 
+/** 'YYYY-MM-DD' → "sábado 16 de agosto de 2026" (para el sitio público). */
+export function fechaLargaAR(fechaISO: string): string {
+  const [y, m, d] = fechaISO.split("-").map(Number);
+  return new Intl.DateTimeFormat("es-AR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(y, m - 1, d, 12)));
+}
+
 /** Valida el formato 'YYYY-MM-DD'. */
 export function esFechaISOValida(fecha: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return false;

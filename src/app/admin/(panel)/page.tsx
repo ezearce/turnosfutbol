@@ -40,7 +40,7 @@ export default async function DashboardPage() {
       </div>
 
       {esAdminGeneral ? (
-        <div className="rounded-lg border border-marca-borde bg-white p-4">
+        <div className="rounded-lg border border-marca-borde bg-marca-superficie p-4">
           <h2 className="text-sm font-semibold">Administración de la plataforma</h2>
           <p className="mt-1 text-sm text-marca-marron">
             Gestioná los complejos y sus administradores.
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
           {misComplejos.map((c) => (
             <div
               key={c.id}
-              className="flex flex-col gap-4 rounded-lg border border-marca-borde bg-white p-4"
+              className="flex flex-col gap-4 rounded-lg border border-marca-borde bg-marca-superficie p-4"
             >
               <div className="flex items-start justify-between">
                 <div>

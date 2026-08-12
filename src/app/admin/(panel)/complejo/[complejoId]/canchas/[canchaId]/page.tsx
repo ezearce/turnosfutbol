@@ -72,7 +72,7 @@ export default async function ConfigurarCanchaPage({
         {cancha.horarios.length === 0 ? (
           <p className="text-sm text-marca-marron">Sin horarios cargados.</p>
         ) : (
-          <ul className="divide-y divide-marca-borde rounded-lg border border-marca-borde bg-white">
+          <ul className="divide-y divide-marca-borde rounded-lg border border-marca-borde bg-marca-superficie">
             {cancha.horarios.map((h) => (
               <li
                 key={h.id}
@@ -98,7 +98,7 @@ export default async function ConfigurarCanchaPage({
           </ul>
         )}
 
-        <div className="rounded-lg border border-marca-borde bg-white p-4">
+        <div className="rounded-lg border border-marca-borde bg-marca-superficie p-4">
           <h3 className="mb-3 text-sm font-semibold">Agregar horario</h3>
           <HorarioForm accion={agregarHorario} complejoId={complejoId} canchaId={cancha.id} />
         </div>
@@ -122,7 +122,7 @@ export default async function ConfigurarCanchaPage({
             Sin reglas. Se usa el precio base para todos los turnos.
           </p>
         ) : (
-          <ul className="divide-y divide-marca-borde rounded-lg border border-marca-borde bg-white">
+          <ul className="divide-y divide-marca-borde rounded-lg border border-marca-borde bg-marca-superficie">
             {cancha.reglasPrecio.map((r) => {
               const franja =
                 r.inicioMin != null && r.finMin != null
@@ -152,7 +152,7 @@ export default async function ConfigurarCanchaPage({
           </ul>
         )}
 
-        <div className="rounded-lg border border-marca-borde bg-white p-4">
+        <div className="rounded-lg border border-marca-borde bg-marca-superficie p-4">
           <h3 className="mb-3 text-sm font-semibold">Agregar regla de precio</h3>
           <PrecioForm accion={agregarReglaPrecio} complejoId={complejoId} canchaId={cancha.id} />
         </div>

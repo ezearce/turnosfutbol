@@ -69,7 +69,7 @@ export default async function EditarComplejoPage({
             Este complejo todavía no tiene administradores.
           </p>
         ) : (
-          <ul className="divide-y divide-marca-borde rounded-lg border border-marca-borde bg-white">
+          <ul className="divide-y divide-marca-borde rounded-lg border border-marca-borde bg-marca-superficie">
             {complejo.miembros.map((m) => (
               <li
                 key={m.id}
@@ -94,7 +94,7 @@ export default async function EditarComplejoPage({
           </ul>
         )}
 
-        <div className="rounded-lg border border-marca-borde bg-white p-4">
+        <div className="rounded-lg border border-marca-borde bg-marca-superficie p-4">
           <h3 className="mb-3 text-sm font-semibold">Nuevo administrador</h3>
           <AdminForm accion={crearAdminComplejo} complejoId={complejo.id} />
         </div>

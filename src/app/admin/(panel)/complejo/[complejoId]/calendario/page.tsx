@@ -108,7 +108,7 @@ export default async function CalendarioPage({
       </div>
 
       {canchas.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-marca-borde bg-white p-8 text-center text-sm text-marca-marron">
+        <p className="rounded-lg border border-dashed border-marca-borde bg-marca-superficie p-8 text-center text-sm text-marca-marron">
           Primero cargá una cancha con horarios para ver el calendario.
         </p>
       ) : (
@@ -122,7 +122,7 @@ export default async function CalendarioPage({
                 <select
                   name="canchaId"
                   defaultValue={canchaId}
-                  className="rounded-md border border-marca-borde bg-white px-3 py-2 outline-none focus:border-marca-verde"
+                  className="rounded-md border border-marca-borde bg-marca-superficie px-3 py-2 outline-none focus:border-marca-verde"
                 >
                   {canchas.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -167,7 +167,7 @@ export default async function CalendarioPage({
           </p>
 
           {/* Grid semanal */}
-          <div className="overflow-x-auto rounded-lg border border-marca-borde bg-white">
+          <div className="overflow-x-auto rounded-lg border border-marca-borde bg-marca-superficie">
             <div className="flex min-w-[720px]">
               {/* Eje de horas */}
               <div className="w-14 shrink-0">
@@ -230,8 +230,8 @@ export default async function CalendarioPage({
                               href={`/admin/complejo/${complejoId}/agenda?canchaId=${canchaId}&fecha=${diaISO}`}
                               className={`absolute inset-x-0.5 overflow-hidden rounded px-1.5 py-0.5 text-[11px] leading-tight transition-opacity hover:opacity-90 ${
                                 esBloqueo
-                                  ? "bg-marca-marron/80 text-white"
-                                  : "bg-marca-verde text-white"
+                                  ? "bg-suave text-superficie"
+                                  : "bg-primario text-primario-contraste"
                               }`}
                               style={{ top: e.top, height: e.alto }}
                             >
