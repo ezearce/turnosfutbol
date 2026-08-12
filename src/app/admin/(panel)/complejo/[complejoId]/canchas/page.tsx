@@ -27,6 +27,12 @@ export default async function CanchasPage({
         </div>
         <div className="flex items-center gap-3">
           <Link
+            href={`/admin/complejo/${complejoId}/calendario`}
+            className="rounded-md border border-marca-borde px-4 py-2 text-sm font-medium text-marca-texto transition-colors hover:bg-marca-crema"
+          >
+            Calendario
+          </Link>
+          <Link
             href={`/admin/complejo/${complejoId}/agenda`}
             className="rounded-md border border-marca-borde px-4 py-2 text-sm font-medium text-marca-texto transition-colors hover:bg-marca-crema"
           >

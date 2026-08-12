@@ -69,12 +69,20 @@ export default async function AgendaPage({
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-10">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Agenda</h1>
-        <Link
-          href={`/admin/complejo/${complejoId}/canchas`}
-          className="text-sm text-marca-marron hover:text-marca-verde"
-        >
-          Canchas →
-        </Link>
+        <div className="flex items-center gap-4 text-sm">
+          <Link
+            href={`/admin/complejo/${complejoId}/calendario`}
+            className="text-marca-marron hover:text-marca-verde"
+          >
+            Calendario
+          </Link>
+          <Link
+            href={`/admin/complejo/${complejoId}/canchas`}
+            className="text-marca-marron hover:text-marca-verde"
+          >
+            Canchas →
+          </Link>
+        </div>
       </div>
 
       {canchas.length === 0 ? (

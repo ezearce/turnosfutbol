@@ -74,6 +74,36 @@ export function horaLocalHHMM(instante: Date, zona = ZONA_ARG): string {
   }).format(instante);
 }
 
+/** Instante UTC → minutos locales desde medianoche (0–1439) en hora argentina. */
+export function minutosLocales(instante: Date, zona = ZONA_ARG): number {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: zona,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(instante)
+      .map((x) => [x.type, x.value]),
+  );
+  let hora = Number(p.hour);
+  if (hora === 24) hora = 0;
+  return hora * 60 + Number(p.minute);
+}
+
+/** Suma (o resta) días a una fecha 'YYYY-MM-DD' y devuelve el ISO resultante. */
+export function sumarDiasISO(fechaISO: string, dias: number): string {
+  const [y, m, d] = fechaISO.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + dias)).toISOString().slice(0, 10);
+}
+
+/** Lunes de la semana que contiene a esa fecha (semana lunes→domingo). */
+export function inicioSemanaISO(fechaISO: string): string {
+  const dow = diaSemana(fechaISO); // 0=Dom … 6=Sáb
+  const haciaLunes = (dow + 6) % 7; // días a restar para llegar al lunes
+  return sumarDiasISO(fechaISO, -haciaLunes);
+}
+
 /** Valida el formato 'YYYY-MM-DD'. */
 export function esFechaISOValida(fecha: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return false;
