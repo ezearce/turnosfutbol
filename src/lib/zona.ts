@@ -49,6 +49,31 @@ export function diaSemana(fechaISO: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
+/** Fecha de hoy 'YYYY-MM-DD' en hora local argentina. */
+export function hoyISO(zona = ZONA_ARG): string {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: zona,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(new Date())
+      .map((x) => [x.type, x.value]),
+  );
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+/** Instante UTC → "HH:MM" en hora local argentina (para mostrar reservas). */
+export function horaLocalHHMM(instante: Date, zona = ZONA_ARG): string {
+  return new Intl.DateTimeFormat("es-AR", {
+    timeZone: zona,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(instante);
+}
+
 /** Valida el formato 'YYYY-MM-DD'. */
 export function esFechaISOValida(fecha: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return false;

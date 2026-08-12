@@ -25,12 +25,20 @@ export default async function CanchasPage({
             {canchas.length} cancha{canchas.length === 1 ? "" : "s"}
           </p>
         </div>
-        <Link
-          href={`/admin/complejo/${complejoId}/canchas/nueva`}
-          className="rounded-md bg-marca-verde px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-marca-verde-oscuro"
-        >
-          Nueva cancha
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/admin/complejo/${complejoId}/agenda`}
+            className="rounded-md border border-marca-borde px-4 py-2 text-sm font-medium text-marca-texto transition-colors hover:bg-marca-crema"
+          >
+            Agenda
+          </Link>
+          <Link
+            href={`/admin/complejo/${complejoId}/canchas/nueva`}
+            className="rounded-md bg-marca-verde px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-marca-verde-oscuro"
+          >
+            Nueva cancha
+          </Link>
+        </div>
       </div>
 
       {canchas.length === 0 ? (
