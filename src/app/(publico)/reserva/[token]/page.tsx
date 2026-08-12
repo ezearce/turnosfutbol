@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { fechaLargaAR, horaLocalHHMM } from "@/lib/zona";
 import { formatearPrecio } from "@/lib/formato";
+import { HORAS_CANCELACION_CLIENTE, estadoCancelacionCliente } from "@/lib/reservas";
 import { BotonImprimir } from "./_componentes/boton-imprimir";
+import { BotonCancelar } from "./_componentes/boton-cancelar";
+import { cancelarReservaPorToken } from "./acciones";
 
 // La fecha 'YYYY-MM-DD' local del instante de inicio (para el texto largo).
 function fechaISODeInstante(instante: Date): string {
@@ -40,6 +43,9 @@ export default async function ConfirmacionReservaPage({
 
   const cancelada = reserva.estado === "CANCELADA";
   const fechaISO = fechaISODeInstante(reserva.iniciaEn);
+  const estadoCancelacion = estadoCancelacionCliente(reserva);
+  const cancelable = estadoCancelacion === "CANCELABLE";
+  const fueraDePlazo = estadoCancelacion === "FUERA_DE_PLAZO";
 
   return (
     <main className="mx-auto w-full max-w-lg flex-1 px-6 py-12">
@@ -96,6 +102,20 @@ export default async function ConfirmacionReservaPage({
         </dl>
       </div>
 
+      {/* Notas: email enviado / plazo de cancelación */}
+      {!cancelada && reserva.clienteEmail ? (
+        <p className="no-print mt-4 text-center text-sm text-suave">
+          📧 Te enviamos el comprobante y el link para gestionar tu reserva a{" "}
+          <span className="font-medium text-texto">{reserva.clienteEmail}</span>.
+        </p>
+      ) : null}
+      {fueraDePlazo ? (
+        <p className="no-print mt-4 rounded-xl border border-borde bg-superficie-2 px-4 py-3 text-center text-sm text-suave">
+          La cancelación online cierra {HORAS_CANCELACION_CLIENTE} h antes del turno.
+          Para cancelar ahora, comunicate con el complejo.
+        </p>
+      ) : null}
+
       <div className="no-print mt-6 flex items-center justify-between gap-3">
         <Link
           href={`/cancha/${reserva.complejo.slug}`}
@@ -103,7 +123,12 @@ export default async function ConfirmacionReservaPage({
         >
           ← Volver al complejo
         </Link>
-        {!cancelada ? <BotonImprimir /> : null}
+        <div className="flex items-center gap-3">
+          {!cancelada ? <BotonImprimir /> : null}
+          {cancelable ? (
+            <BotonCancelar accion={cancelarReservaPorToken} token={reserva.token} />
+          ) : null}
+        </div>
       </div>
     </main>
   );

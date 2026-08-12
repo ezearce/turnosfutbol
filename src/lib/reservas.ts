@@ -12,11 +12,40 @@
 import { prisma } from "@/lib/prisma";
 import { resolverPrecio } from "@/lib/disponibilidad";
 import { localAInstante, diaSemana } from "@/lib/zona";
-import type { OrigenReserva } from "@/generated/prisma/client";
+import { enviarComprobanteReserva } from "@/lib/email";
+import type {
+  OrigenReserva,
+  EstadoReserva,
+  TipoReserva,
+} from "@/generated/prisma/client";
 
 export type ResultadoReserva =
   | { ok: true; id: string; token: string }
   | { ok: false; error: string };
+
+/** Horas mínimas de antelación para que un cliente cancele su propia reserva. */
+export const HORAS_CANCELACION_CLIENTE = 2;
+
+/** ¿El cliente todavía está a tiempo de cancelar (≥ N h antes del inicio)? */
+export function puedeCancelarCliente(iniciaEn: Date, ahora: Date = new Date()): boolean {
+  return (
+    iniciaEn.getTime() - ahora.getTime() >=
+    HORAS_CANCELACION_CLIENTE * 60 * 60 * 1000
+  );
+}
+
+export type EstadoCancelacionCliente = "CANCELABLE" | "FUERA_DE_PLAZO" | "NO_APLICA";
+
+/** Estado de la cancelación por parte del cliente, para decidir qué mostrar en el
+ *  comprobante. Encapsula el uso de la hora actual (no debe hacerse en el render). */
+export function estadoCancelacionCliente(
+  reserva: { estado: EstadoReserva; tipo: TipoReserva; iniciaEn: Date },
+  ahora: Date = new Date(),
+): EstadoCancelacionCliente {
+  if (reserva.tipo !== "RESERVA" || reserva.estado === "CANCELADA") return "NO_APLICA";
+  if (reserva.iniciaEn.getTime() <= ahora.getTime()) return "NO_APLICA"; // ya empezó/pasó
+  return puedeCancelarCliente(reserva.iniciaEn, ahora) ? "CANCELABLE" : "FUERA_DE_PLAZO";
+}
 
 /** Error de negocio dentro de la transacción (se traduce a { ok:false }). */
 class ErrorReserva extends Error {}
@@ -75,15 +104,27 @@ export async function crearReserva(datos: DatosReserva): Promise<ResultadoReserv
     return { ok: false, error: "Ese turno ya pasó." };
 
   try {
+    // Datos para el email del comprobante, capturados dentro de la transacción.
+    let datosEmail: { canchaNombre: string; complejoNombre: string; precio: number } | null =
+      null;
+
     const reserva = await prisma.$transaction(async (tx) => {
       const cancha = await tx.cancha.findUnique({
         where: { id: datos.canchaId },
-        include: { reglasPrecio: true, complejo: { select: { activo: true } } },
+        include: {
+          reglasPrecio: true,
+          complejo: { select: { activo: true, nombre: true } },
+        },
       });
       if (!cancha || !cancha.activa || !cancha.complejo.activo)
         throw new ErrorReserva("La cancha no está disponible.");
 
       const precio = resolverPrecio(cancha, dia, datos.inicioMin, datos.finMin) ?? 0;
+      datosEmail = {
+        canchaNombre: cancha.nombre,
+        complejoNombre: cancha.complejo.nombre,
+        precio,
+      };
 
       return tx.reserva.create({
         data: {
@@ -104,6 +145,25 @@ export async function crearReserva(datos: DatosReserva): Promise<ResultadoReserv
         select: { id: true, token: true },
       });
     });
+
+    // Comprobante por email (si hay email y proveedor configurado). No bloquea
+    // ni voltea la reserva si el envío falla: enviarComprobanteReserva no lanza.
+    const email = datos.cliente?.email;
+    if (email && datosEmail) {
+      const d = datosEmail as { canchaNombre: string; complejoNombre: string; precio: number };
+      await enviarComprobanteReserva({
+        email,
+        clienteNombre: datos.cliente?.nombre ?? null,
+        complejoNombre: d.complejoNombre,
+        canchaNombre: d.canchaNombre,
+        fechaISO: datos.fechaISO,
+        inicioMin: datos.inicioMin,
+        finMin: datos.finMin,
+        precio: d.precio,
+        token: reserva.token,
+      });
+    }
+
     return { ok: true, id: reserva.id, token: reserva.token };
   } catch (e) {
     if (e instanceof ErrorReserva) return { ok: false, error: e.message };
