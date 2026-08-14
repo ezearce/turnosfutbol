@@ -4,21 +4,23 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requerirAccesoComplejo } from "@/lib/autorizacion";
+import {
+  parsear,
+  canchaSchema,
+  horarioSchema,
+  reglaPrecioSchema,
+} from "@/lib/validaciones";
+import { subirImagen, eliminarImagen, publicIdDesdeUrl } from "@/lib/cloudinary";
 import type { EstadoFormulario } from "@/lib/formularios";
 import type { TipoCancha } from "@/generated/prisma/client";
 
-const TIPOS_CANCHA = ["F5", "F7", "F11"] as const;
+/** Límites de subida de fotos. */
+const MAX_FOTOS_POR_CANCHA = 8;
+const MAX_BYTES_FOTO = 5 * 1024 * 1024; // 5 MB
 
 function texto(formData: FormData, clave: string): string {
   const valor = formData.get(clave);
   return typeof valor === "string" ? valor.trim() : "";
-}
-
-/** Parsea un número o devuelve null si está vacío/ inválido. */
-function numeroOpcional(valor: string): number | null {
-  if (valor === "") return null;
-  const n = Number(valor);
-  return Number.isFinite(n) ? n : null;
 }
 
 function rutaCancha(complejoId: string, canchaId: string): string {
@@ -32,25 +34,6 @@ async function canchaDelComplejo(canchaId: string, complejoId: string) {
 
 // ─────────────────────────── Canchas ───────────────────────────
 
-function datosCancha(formData: FormData) {
-  return {
-    nombre: texto(formData, "nombre"),
-    tipo: texto(formData, "tipo"),
-    superficie: texto(formData, "superficie") || null,
-    techada: formData.get("techada") === "on",
-    precioBase: numeroOpcional(texto(formData, "precioBase")),
-  };
-}
-
-function validarCancha(d: ReturnType<typeof datosCancha>): string | null {
-  if (d.nombre.length < 1) return "El nombre es obligatorio.";
-  if (!TIPOS_CANCHA.includes(d.tipo as (typeof TIPOS_CANCHA)[number]))
-    return "Elegí un tipo de cancha válido.";
-  if (d.precioBase !== null && d.precioBase < 0)
-    return "El precio base no puede ser negativo.";
-  return null;
-}
-
 export async function crearCancha(
   _prev: EstadoFormulario,
   formData: FormData,
@@ -58,9 +41,9 @@ export async function crearCancha(
   const complejoId = texto(formData, "complejoId");
   await requerirAccesoComplejo(complejoId);
 
-  const d = datosCancha(formData);
-  const error = validarCancha(d);
-  if (error) return { error };
+  const parseo = parsear(canchaSchema, Object.fromEntries(formData));
+  if (!parseo.ok) return { error: parseo.error };
+  const d = parseo.data;
 
   await prisma.cancha.create({
     data: {
@@ -87,9 +70,9 @@ export async function editarCancha(
   if (!(await canchaDelComplejo(canchaId, complejoId)))
     return { error: "Cancha no encontrada." };
 
-  const d = datosCancha(formData);
-  const error = validarCancha(d);
-  if (error) return { error };
+  const parseo = parsear(canchaSchema, Object.fromEntries(formData));
+  if (!parseo.ok) return { error: parseo.error };
+  const d = parseo.data;
 
   await prisma.cancha.update({
     where: { id: canchaId },
@@ -121,6 +104,71 @@ export async function alternarActivaCancha(formData: FormData): Promise<void> {
   }
 }
 
+// ─────────────────────────── Fotos (Cloudinary) ───────────────────────────
+
+export async function agregarFotoCancha(
+  _prev: EstadoFormulario,
+  formData: FormData,
+): Promise<EstadoFormulario> {
+  const complejoId = texto(formData, "complejoId");
+  const canchaId = texto(formData, "canchaId");
+  await requerirAccesoComplejo(complejoId);
+  if (!(await canchaDelComplejo(canchaId, complejoId)))
+    return { error: "Cancha no encontrada." };
+
+  const archivo = formData.get("foto");
+  if (!(archivo instanceof File) || archivo.size === 0)
+    return { error: "Elegí una imagen para subir." };
+  if (!archivo.type.startsWith("image/"))
+    return { error: "El archivo debe ser una imagen." };
+  if (archivo.size > MAX_BYTES_FOTO)
+    return { error: "La imagen no puede superar los 5 MB." };
+
+  const cantidad = await prisma.canchaFoto.count({ where: { canchaId } });
+  if (cantidad >= MAX_FOTOS_POR_CANCHA)
+    return { error: `Máximo ${MAX_FOTOS_POR_CANCHA} fotos por cancha.` };
+
+  let subida;
+  try {
+    subida = await subirImagen(archivo);
+  } catch (e) {
+    console.error("[fotos] Falló la subida a Cloudinary:", e);
+    return { error: "No se pudo subir la imagen. Revisá la configuración de Cloudinary." };
+  }
+
+  await prisma.canchaFoto.create({
+    data: { canchaId, url: subida.url, posicion: cantidad },
+  });
+
+  revalidatePath(rutaCancha(complejoId, canchaId));
+  revalidatePath(`/admin/complejo/${complejoId}/canchas`);
+  return null;
+}
+
+export async function quitarFotoCancha(formData: FormData): Promise<void> {
+  const complejoId = texto(formData, "complejoId");
+  const canchaId = texto(formData, "canchaId");
+  const fotoId = texto(formData, "fotoId");
+  await requerirAccesoComplejo(complejoId);
+  if (!(await canchaDelComplejo(canchaId, complejoId))) return;
+
+  // Sólo borra la foto si es de esa cancha (aislamiento multi-tenant).
+  const foto = await prisma.canchaFoto.findFirst({
+    where: { id: fotoId, canchaId },
+    select: { id: true, url: true },
+  });
+  if (!foto) return;
+
+  await prisma.canchaFoto.delete({ where: { id: foto.id } });
+
+  // Best-effort: borrar también el archivo en Cloudinary (no bloquea).
+  const publicId = publicIdDesdeUrl(foto.url);
+  if (publicId) await eliminarImagen(publicId);
+
+  revalidatePath(rutaCancha(complejoId, canchaId));
+  revalidatePath(`/admin/complejo/${complejoId}/canchas`);
+}
+
 // ─────────────────────────── Horarios ───────────────────────────
 
 export async function agregarHorario(
@@ -133,27 +181,17 @@ export async function agregarHorario(
   if (!(await canchaDelComplejo(canchaId, complejoId)))
     return { error: "Cancha no encontrada." };
 
-  const diaSemana = numeroOpcional(texto(formData, "diaSemana"));
-  const aperturaHora = numeroOpcional(texto(formData, "aperturaHora"));
-  const cierreHora = numeroOpcional(texto(formData, "cierreHora"));
-  const minutosTurno = numeroOpcional(texto(formData, "minutosTurno"));
-
-  if (diaSemana === null || diaSemana < 0 || diaSemana > 6)
-    return { error: "Elegí un día válido." };
-  if (aperturaHora === null || cierreHora === null)
-    return { error: "Completá la hora de apertura y cierre." };
-  if (aperturaHora >= cierreHora)
-    return { error: "La apertura debe ser anterior al cierre." };
-  if (!minutosTurno || minutosTurno <= 0)
-    return { error: "Elegí la duración del turno." };
+  const parseo = parsear(horarioSchema, Object.fromEntries(formData));
+  if (!parseo.ok) return { error: parseo.error };
+  const d = parseo.data;
 
   await prisma.horarioAtencion.create({
     data: {
       canchaId,
-      diaSemana,
-      aperturaMin: aperturaHora * 60,
-      cierreMin: cierreHora * 60,
-      minutosTurno,
+      diaSemana: d.diaSemana,
+      aperturaMin: d.aperturaHora * 60,
+      cierreMin: d.cierreHora * 60,
+      minutosTurno: d.minutosTurno,
     },
   });
 
@@ -187,31 +225,21 @@ export async function agregarReglaPrecio(
   if (!(await canchaDelComplejo(canchaId, complejoId)))
     return { error: "Cancha no encontrada." };
 
-  const diaSemana = numeroOpcional(texto(formData, "diaSemana")); // null = todos
-  const desdeHora = numeroOpcional(texto(formData, "desdeHora"));
-  const hastaHora = numeroOpcional(texto(formData, "hastaHora"));
-  const precio = numeroOpcional(texto(formData, "precio"));
+  const parseo = parsear(reglaPrecioSchema, Object.fromEntries(formData));
+  if (!parseo.ok) return { error: parseo.error };
+  const d = parseo.data;
 
-  if (precio === null || precio < 0) return { error: "Ingresá un precio válido." };
-  if (diaSemana !== null && (diaSemana < 0 || diaSemana > 6))
-    return { error: "Día inválido." };
-
-  const tieneFranja = desdeHora !== null && hastaHora !== null;
-  if ((desdeHora !== null) !== (hastaHora !== null))
-    return { error: "Completá desde y hasta, o dejá ambos vacíos." };
-  if (tieneFranja && desdeHora! >= hastaHora!)
-    return { error: "La franja: desde debe ser anterior a hasta." };
-
+  const tieneFranja = d.desdeHora !== null && d.hastaHora !== null;
   // Prioridad automática: más específica gana (día + franja).
-  const prioridad = (diaSemana !== null ? 2 : 0) + (tieneFranja ? 1 : 0);
+  const prioridad = (d.diaSemana !== null ? 2 : 0) + (tieneFranja ? 1 : 0);
 
   await prisma.reglaPrecio.create({
     data: {
       canchaId,
-      diaSemana,
-      inicioMin: tieneFranja ? desdeHora! * 60 : null,
-      finMin: tieneFranja ? hastaHora! * 60 : null,
-      precio,
+      diaSemana: d.diaSemana,
+      inicioMin: tieneFranja ? d.desdeHora! * 60 : null,
+      finMin: tieneFranja ? d.hastaHora! * 60 : null,
+      precio: d.precio!,
       prioridad,
     },
   });

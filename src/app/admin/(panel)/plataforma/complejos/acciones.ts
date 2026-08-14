@@ -1,15 +1,13 @@
 "use server";
 
-import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { requerirAdminGeneral } from "@/lib/autorizacion";
 import { slugify } from "@/lib/slug";
+import { parsear, complejoSchema, adminComplejoSchema } from "@/lib/validaciones";
 import type { EstadoFormulario } from "@/lib/formularios";
-
-const emailSchema = z.email();
 
 function texto(formData: FormData, clave: string): string {
   const valor = formData.get(clave);
@@ -29,36 +27,16 @@ async function slugUnico(base: string, exceptoId?: string): Promise<string> {
   }
 }
 
-function datosComplejo(formData: FormData) {
-  const email = texto(formData, "email");
-  return {
-    nombre: texto(formData, "nombre"),
-    slugPropuesto: texto(formData, "slug"),
-    descripcion: texto(formData, "descripcion") || null,
-    direccion: texto(formData, "direccion") || null,
-    ciudad: texto(formData, "ciudad") || null,
-    telefono: texto(formData, "telefono") || null,
-    whatsapp: texto(formData, "whatsapp") || null,
-    email: email || null,
-  };
-}
-
-function validarComplejo(d: ReturnType<typeof datosComplejo>): string | null {
-  if (d.nombre.length < 2) return "El nombre es obligatorio.";
-  if (d.email && !emailSchema.safeParse(d.email).success) return "El email no es válido.";
-  return null;
-}
-
 export async function crearComplejo(
   _prev: EstadoFormulario,
   formData: FormData,
 ): Promise<EstadoFormulario> {
   await requerirAdminGeneral();
-  const d = datosComplejo(formData);
-  const error = validarComplejo(d);
-  if (error) return { error };
+  const parseo = parsear(complejoSchema, Object.fromEntries(formData));
+  if (!parseo.ok) return { error: parseo.error };
+  const d = parseo.data;
 
-  const slug = await slugUnico(slugify(d.slugPropuesto || d.nombre));
+  const slug = await slugUnico(slugify(d.slug ?? d.nombre));
   await prisma.complejo.create({
     data: {
       nombre: d.nombre,
@@ -84,11 +62,11 @@ export async function editarComplejo(
   const id = texto(formData, "id");
   if (!id) return { error: "Complejo no encontrado." };
 
-  const d = datosComplejo(formData);
-  const error = validarComplejo(d);
-  if (error) return { error };
+  const parseo = parsear(complejoSchema, Object.fromEntries(formData));
+  if (!parseo.ok) return { error: parseo.error };
+  const d = parseo.data;
 
-  const slug = await slugUnico(slugify(d.slugPropuesto || d.nombre), id);
+  const slug = await slugUnico(slugify(d.slug ?? d.nombre), id);
   await prisma.complejo.update({
     where: { id },
     data: {
@@ -128,14 +106,11 @@ export async function crearAdminComplejo(
 ): Promise<EstadoFormulario> {
   await requerirAdminGeneral();
   const complejoId = texto(formData, "complejoId");
-  const nombre = texto(formData, "nombre");
-  const email = texto(formData, "email").toLowerCase();
-  const password = String(formData.get("password") ?? "");
-
   if (!complejoId) return { error: "Complejo no encontrado." };
-  if (nombre.length < 2) return { error: "El nombre es obligatorio." };
-  if (!emailSchema.safeParse(email).success) return { error: "El email no es válido." };
-  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
+
+  const parseo = parsear(adminComplejoSchema, Object.fromEntries(formData));
+  if (!parseo.ok) return { error: parseo.error };
+  const { nombre, email, password } = parseo.data;
 
   const existente = await prisma.usuario.findUnique({ where: { email } });
   if (existente) return { error: "Ya existe un usuario con ese email." };

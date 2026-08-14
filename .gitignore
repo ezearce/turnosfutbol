@@ -20,6 +20,10 @@ next-env.d.ts
 
 # ─────────────── Testing ───────────────
 /coverage
+/test-results
+/playwright-report
+/playwright/.cache
+/blob-report
 
 # ─────────────── Prisma ───────────────
 # Cliente generado (se regenera con `prisma generate`)

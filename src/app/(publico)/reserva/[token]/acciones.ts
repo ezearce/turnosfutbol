@@ -3,10 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { cancelarReserva, puedeCancelarCliente } from "@/lib/reservas";
+import { limitar, ipCliente } from "@/lib/rate-limit";
 
 /** Cancela una reserva usando su token (la "llave" del comprobante). Sólo si es
  *  una RESERVA activa y todavía dentro de la ventana de cancelación del cliente. */
 export async function cancelarReservaPorToken(formData: FormData): Promise<void> {
+  const { ok: dentroDelLimite } = limitar(`cancelar:${await ipCliente()}`, 20, 60_000);
+  if (!dentroDelLimite) return;
+
   const token = typeof formData.get("token") === "string"
     ? (formData.get("token") as string)
     : "";

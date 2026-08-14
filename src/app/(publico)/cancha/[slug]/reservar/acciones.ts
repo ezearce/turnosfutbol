@@ -3,51 +3,41 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { crearReserva } from "@/lib/reservas";
-import { esFechaISOValida } from "@/lib/zona";
+import { parsear, reservaPublicaSchema } from "@/lib/validaciones";
+import { limitar, ipCliente } from "@/lib/rate-limit";
 import type { EstadoFormulario } from "@/lib/formularios";
-
-function texto(formData: FormData, clave: string): string {
-  const valor = formData.get(clave);
-  return typeof valor === "string" ? valor.trim() : "";
-}
 
 export async function reservarPublico(
   _prev: EstadoFormulario,
   formData: FormData,
 ): Promise<EstadoFormulario> {
-  const slug = texto(formData, "slug");
-  const canchaId = texto(formData, "canchaId");
-  const fecha = texto(formData, "fecha");
-  const inicioMin = Number(texto(formData, "inicioMin"));
-  const finMin = Number(texto(formData, "finMin"));
+  // Rate limit por IP: freno básico contra abuso del endpoint público.
+  const { ok: dentroDelLimite } = limitar(`reserva:${await ipCliente()}`, 8, 60_000);
+  if (!dentroDelLimite)
+    return { error: "Demasiados intentos. Esperá un momento e intentá de nuevo." };
 
-  if (!esFechaISOValida(fecha)) return { error: "Fecha inválida." };
-  if (!Number.isFinite(inicioMin) || !Number.isFinite(finMin) || finMin <= inicioMin)
-    return { error: "Turno inválido." };
+  const parseo = parsear(reservaPublicaSchema, Object.fromEntries(formData));
+  if (!parseo.ok) return { error: parseo.error };
+  const d = parseo.data;
 
   // La cancha debe pertenecer a un complejo activo con ese slug (evita usar un
   // canchaId de otro complejo con un slug cualquiera).
   const cancha = await prisma.cancha.findFirst({
-    where: { id: canchaId, activa: true, complejo: { slug, activo: true } },
+    where: { id: d.canchaId, activa: true, complejo: { slug: d.slug, activo: true } },
     select: { id: true },
   });
   if (!cancha) return { error: "La cancha no está disponible." };
 
-  const nombre = texto(formData, "nombre");
-  const telefono = texto(formData, "telefono");
-  if (nombre.length < 1) return { error: "Ingresá tu nombre." };
-  if (telefono.length < 6) return { error: "Ingresá un teléfono de contacto." };
-
   const resultado = await crearReserva({
-    canchaId,
-    fechaISO: fecha,
-    inicioMin,
-    finMin,
+    canchaId: d.canchaId,
+    fechaISO: d.fecha,
+    inicioMin: d.inicioMin,
+    finMin: d.finMin,
     cliente: {
-      nombre,
-      apellido: texto(formData, "apellido") || null,
-      telefono,
-      email: texto(formData, "email") || null,
+      nombre: d.nombre,
+      apellido: d.apellido,
+      telefono: d.telefono,
+      email: d.email,
     },
     origen: "WEB",
   });

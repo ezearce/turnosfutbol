@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatearPrecio } from "@/lib/formato";
@@ -29,6 +30,7 @@ export default async function PerfilComplejoPage({
           superficie: true,
           techada: true,
           precioBase: true,
+          fotos: { orderBy: { posicion: "asc" }, take: 1, select: { url: true } },
         },
       },
     },
@@ -97,8 +99,20 @@ export default async function PerfilComplejoPage({
             {complejo.canchas.map((c) => (
               <div
                 key={c.id}
-                className="flex flex-col gap-2 rounded-2xl border border-borde bg-superficie p-5 shadow-[var(--tf-sombra)]"
+                className="flex flex-col gap-2 overflow-hidden rounded-2xl border border-borde bg-superficie shadow-[var(--tf-sombra)]"
               >
+                {c.fotos[0] ? (
+                  <div className="relative aspect-video w-full bg-superficie-2">
+                    <Image
+                      src={c.fotos[0].url}
+                      alt={c.nombre}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 400px"
+                      className="object-cover"
+                    />
+                  </div>
+                ) : null}
+                <div className="flex flex-col gap-2 p-5">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-semibold">{c.nombre}</h3>
                   <span className="rounded-full bg-primario-suave px-2.5 py-0.5 text-xs font-semibold text-primario">
@@ -126,6 +140,7 @@ export default async function PerfilComplejoPage({
                 >
                   Ver disponibilidad
                 </Link>
+                </div>
               </div>
             ))}
           </div>

@@ -6,6 +6,7 @@ import { formatearPrecio } from "@/lib/formato";
 import { CanchaForm } from "../_componentes/cancha-form";
 import { HorarioForm } from "../_componentes/horario-form";
 import { PrecioForm } from "../_componentes/precio-form";
+import { FotosCancha } from "../_componentes/fotos-cancha";
 import {
   editarCancha,
   quitarHorario,
@@ -26,6 +27,7 @@ export default async function ConfigurarCanchaPage({
     include: {
       horarios: { orderBy: [{ diaSemana: "asc" }, { aperturaMin: "asc" }] },
       reglasPrecio: { orderBy: [{ prioridad: "desc" }, { diaSemana: "asc" }] },
+      fotos: { orderBy: { posicion: "asc" } },
     },
   });
   if (!cancha) notFound();
@@ -57,6 +59,21 @@ export default async function ConfigurarCanchaPage({
             techada: cancha.techada,
             precioBase: cancha.precioBase != null ? String(cancha.precioBase) : undefined,
           }}
+        />
+      </section>
+
+      {/* Fotos */}
+      <section className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-lg font-semibold">Fotos</h2>
+          <p className="text-sm text-marca-marron">
+            Se muestran en el sitio público. La primera es la portada.
+          </p>
+        </div>
+        <FotosCancha
+          complejoId={complejoId}
+          canchaId={cancha.id}
+          fotos={cancha.fotos.map((f) => ({ id: f.id, url: f.url }))}
         />
       </section>
 

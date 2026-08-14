@@ -5,18 +5,12 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requerirAccesoComplejo } from "@/lib/autorizacion";
 import { crearReserva, crearBloqueo, cancelarReserva } from "@/lib/reservas";
-import { esFechaISOValida } from "@/lib/zona";
+import { parsear, reservaManualSchema, bloqueoSchema } from "@/lib/validaciones";
 import type { EstadoFormulario } from "@/lib/formularios";
 
 function texto(formData: FormData, clave: string): string {
   const valor = formData.get(clave);
   return typeof valor === "string" ? valor.trim() : "";
-}
-
-function numeroOpcional(valor: string): number | null {
-  if (valor === "") return null;
-  const n = Number(valor);
-  return Number.isFinite(n) ? n : null;
 }
 
 function rutaAgenda(complejoId: string, canchaId: string, fecha: string): string {
@@ -45,33 +39,31 @@ export async function reservarManual(
   if (!(await canchaDelComplejo(canchaId, complejoId)))
     return { error: "Cancha no encontrada." };
 
-  const fecha = texto(formData, "fecha");
-  if (!esFechaISOValida(fecha)) return { error: "Fecha inválida." };
+  const parseo = parsear(reservaManualSchema, Object.fromEntries(formData));
+  if (!parseo.ok) return { error: parseo.error };
+  const d = parseo.data;
 
-  const turno = parsearTurno(texto(formData, "turno"));
+  const turno = parsearTurno(d.turno);
   if (!turno) return { error: "Elegí un turno." };
-
-  const nombre = texto(formData, "clienteNombre");
-  if (nombre.length < 1) return { error: "El nombre del cliente es obligatorio." };
 
   const resultado = await crearReserva({
     canchaId,
-    fechaISO: fecha,
+    fechaISO: d.fecha,
     inicioMin: turno.inicioMin,
     finMin: turno.finMin,
     cliente: {
-      nombre,
-      apellido: texto(formData, "clienteApellido") || null,
-      telefono: texto(formData, "clienteTelefono") || null,
-      email: texto(formData, "clienteEmail") || null,
+      nombre: d.clienteNombre,
+      apellido: d.clienteApellido,
+      telefono: d.clienteTelefono,
+      email: d.clienteEmail,
     },
     origen: "MANUAL",
     creadaPorId: session.user.id,
   });
   if (!resultado.ok) return { error: resultado.error };
 
-  revalidatePath(rutaAgenda(complejoId, canchaId, fecha));
-  redirect(rutaAgenda(complejoId, canchaId, fecha));
+  revalidatePath(rutaAgenda(complejoId, canchaId, d.fecha));
+  redirect(rutaAgenda(complejoId, canchaId, d.fecha));
 }
 
 export async function bloquear(
@@ -84,28 +76,22 @@ export async function bloquear(
   if (!(await canchaDelComplejo(canchaId, complejoId)))
     return { error: "Cancha no encontrada." };
 
-  const fecha = texto(formData, "fecha");
-  if (!esFechaISOValida(fecha)) return { error: "Fecha inválida." };
-
-  const desdeHora = numeroOpcional(texto(formData, "desdeHora"));
-  const hastaHora = numeroOpcional(texto(formData, "hastaHora"));
-  if (desdeHora === null || hastaHora === null)
-    return { error: "Completá desde y hasta." };
-  if (hastaHora <= desdeHora)
-    return { error: "El fin debe ser posterior al inicio." };
+  const parseo = parsear(bloqueoSchema, Object.fromEntries(formData));
+  if (!parseo.ok) return { error: parseo.error };
+  const d = parseo.data;
 
   const resultado = await crearBloqueo({
     canchaId,
-    fechaISO: fecha,
-    inicioMin: desdeHora * 60,
-    finMin: hastaHora * 60,
-    motivo: texto(formData, "motivo") || null,
+    fechaISO: d.fecha,
+    inicioMin: d.desdeHora! * 60,
+    finMin: d.hastaHora! * 60,
+    motivo: d.motivo,
     creadaPorId: session.user.id,
   });
   if (!resultado.ok) return { error: resultado.error };
 
-  revalidatePath(rutaAgenda(complejoId, canchaId, fecha));
-  redirect(rutaAgenda(complejoId, canchaId, fecha));
+  revalidatePath(rutaAgenda(complejoId, canchaId, d.fecha));
+  redirect(rutaAgenda(complejoId, canchaId, d.fecha));
 }
 
 export async function cancelar(formData: FormData): Promise<void> {
